@@ -1,6 +1,6 @@
 {
-  "version": "2.0.2",
-  "url": "https://raw.githubusercontent.com/engaliasiri2012-lab/bd-workspace-updates/main/releases/bd-2.0.2.zip",
-  "sha256": "429c4b596775aaf39a1a9050f71230a9e912fdf9fe7c1d36f184976d7e8de2e6",
-  "notes": "رسائل عربية واضحة لخطأ OpenAI 429: الرصيد، حدود الإنفاق، أو سرعة الطلبات. دون تغيير قاعدة البيانات."
+  "version": "2.0.3",
+  "url": "https://raw.githubusercontent.com/engaliasiri2012-lab/bd-workspace-updates/main/releases/bd-2.0.3.zip",
+  "sha256": "e0b57b79383034576e971bcf715364067832c8e67797ec164935ce428181fd59",
+  "notes": "واجهة عربية مبسطة لاكتشاف فرص BD بالكلمات المفتاحية وتحليل ملفات اكتفاء والحفر، أخبار الطاقة السعودية داخل المنصة وتصدير تقارير Word وPowerPoint؛ بلا ربط بريد."
 }

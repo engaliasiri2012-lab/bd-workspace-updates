@@ -293,7 +293,7 @@ class Handler(BaseHTTPRequestHandler):
                         if path.exists():z.write(path,'attachments/'+a['id'])
                 return self.send(out.getvalue(),ctype='application/zip',filename='BD-Workspace-Backup.zip')
             if p.path.startswith('/api/'):return self.send({'error':'Not found.'},404)
-            relative={'/':'index.html','/app.js':'app.js','/features.js':'features.js','/style.css':'style.css','/favicon.svg':'favicon.svg'}.get(p.path)
+            relative={'/':'index.html','/app.js':'app.js','/features.js':'features.js','/simple.js':'simple.js','/style.css':'style.css','/favicon.svg':'favicon.svg'}.get(p.path)
             if not relative:return self.send({'error':'Not found.'},404)
             return self.send((ROOT/'web'/relative).read_bytes(),ctype=mimetypes.guess_type(relative)[0]+('; charset=utf-8' if relative.endswith(('.html','.css','.js')) else ''))
         except PermissionError as e:self.send({'error':str(e)},403)
@@ -344,6 +344,12 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send(csv_bytes(rows,columns),ctype='text/csv; charset=utf-8',filename='BD-Export.csv')
             if p=='/api/report':
                 return self.send(docx_bytes(str(b.get('title','BD Report')),str(b.get('text',''))),ctype='application/vnd.openxmlformats-officedocument.wordprocessingml.document',filename='BD-Report.docx')
+            if p=='/api/brief-pptx':
+                title=str(b.get('title','BD Report'))[:160]
+                report=str(b.get('text',''))
+                if not report.strip() or len(report)>100000:raise ValueError('Report text must be 1–100,000 characters.')
+                deck=bd_features.pptx_bytes(sys.modules[__name__],{'name':title,'updated':now()},[],brief=report)
+                return self.send(deck,ctype='application/vnd.openxmlformats-officedocument.presentationml.presentation',filename='BD-Executive-Report.pptx')
             if p=='/api/import':
                 kind=b.get('kind');incoming=b.get('records',[])
                 if kind not in TYPES or not isinstance(incoming,list) or len(incoming)>3000:raise ValueError('Import supports up to 3,000 records at a time.')

@@ -181,7 +181,7 @@ def report_text(result,rows,arabic=False):
     lines.extend(['WEB CITATIONS']+list(dict.fromkeys(a.get('url','') for b in result.get('blocks',[]) for a in b.get('annotations',[]))))
     return title,'\n'.join(lines)
 
-def pptx_bytes(app,result,rows,compact=False):
+def pptx_bytes(app,result,rows,compact=False,brief=None):
     # Populate the locally authored editable template. Continuations preserve all text.
     template=app.ROOT/'templates'/('catalogue-summary.pptx' if compact else 'catalogue.pptx')
     with zipfile.ZipFile(template) as z:files={n:z.read(n) for n in z.namelist()}
@@ -214,7 +214,12 @@ def pptx_bytes(app,result,rows,compact=False):
     def page(title,section,text):
         for j,part in enumerate(chunk_text(text)):
             pages.append((title[:90],section+(' (continued)' if j else ''),part))
-    page('Opportunity & Principal Catalogue','EXECUTIVE SUMMARY',result.get('name','')+'\n\n'+result.get('summary','')+'\n\nDraft for review. Unknown fields require follow-up.\nCompany count: '+str(len(rows)))
+    if brief is not None:
+        sections=[s.strip() for s in re.split(r'\n\s*\n',brief) if s.strip()]
+        for i,section_text in enumerate(sections):
+            page(result.get('name','BD Report'),'EXECUTIVE SUMMARY' if i==0 else 'ANALYSIS',section_text)
+        if not pages:page(result.get('name','BD Report'),'EXECUTIVE SUMMARY','No report text provided.')
+    else:page('Opportunity & Principal Catalogue','EXECUTIVE SUMMARY',result.get('name','')+'\n\n'+result.get('summary','')+'\n\nDraft for review. Unknown fields require follow-up.\nCompany count: '+str(len(rows)))
     for i,r in enumerate(rows,1):
         title=f"{i}. {r.get('opportunity') or r['name']}"
         for section,keys in [ ('OPPORTUNITY',['opportunity','need','target_clients','stage','business_unit','sponsor','first_revenue','tam','currency','market_share','gross_margin','financial_basis','reported_gp','opportunity_score','opportunity_factors','next_action']),('PRINCIPAL',['name','country','website','products','specifications','applications','track_record','approvals','contract','exclusive','trial','principal_score','principal_factors']),('TECHNOLOGY & QUALIFICATION',['technology_edge','innovation_evidence','awards','award_evidence','aramco_status','aramco_scope','aramco_evidence','saudi_search_evidence']),('SAUDI MARKET ASSESSMENT',['saudi_presence','agent','saudi_fit','fit_score','score_reason','localization','competitors','capacity','pricing','risks','scoring_basis']),('CONTACTS & EVIDENCE',['contact','contact_role','email','phone','contact_url','contact_evidence','sources','confidence','source_date'])]:
@@ -223,7 +228,7 @@ def pptx_bytes(app,result,rows,compact=False):
             page(title,section,text)
     source_lines=[f"[{s['label']}] {s['name']} {s.get('url','')}" for s in result.get('source_manifest',[])]
     source_lines+=list(dict.fromkeys(a.get('url','') for b in result.get('blocks',[]) for a in b.get('annotations',[])))
-    page('Research sources','SOURCE REGISTER','\n\n'.join(source_lines) or 'See the evidence fields for each company.')
+    if brief is None:page('Research sources','SOURCE REGISTER','\n\n'.join(source_lines) or 'See the evidence fields for each company.')
     if compact:
         import textwrap
         def short(value,limit=95):

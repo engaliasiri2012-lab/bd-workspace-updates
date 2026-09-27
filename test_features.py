@@ -75,4 +75,13 @@ class FeatureTests(unittest.TestCase):
     self.assertEqual(raised.exception.retry_after,'30')
     self.assertIn(meaning,str(raised.exception))
     self.assertNotIn('Do not display raw',str(raised.exception))
+ def test_narrative_presentation_keeps_source_text(self):
+  report='Saudi energy market briefing\n\nConfirmed announcement: https://example.test/announcement dated 2026-09-25.\n\nBD action: contact the company and verify Saudi representation.'
+  raw=f.pptx_bytes(app,{'name':'Executive brief','updated':'2026-09-27'},[],brief=report)
+  with zipfile.ZipFile(io.BytesIO(raw)) as deck:
+   slides=[deck.read(n).decode() for n in deck.namelist() if n.startswith('ppt/slides/slide') and n.endswith('.xml')]
+  self.assertGreaterEqual(len(slides),2)
+  self.assertIn('https://example.test/announcement',''.join(slides))
+  self.assertIn('verify Saudi representation',''.join(slides))
+  self.assertNotIn('Calculated GP',''.join(slides))
 if __name__=='__main__':unittest.main()
