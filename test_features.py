@@ -1,5 +1,5 @@
 """Tests for document intake, paid-request boundaries, catalogue exports and evidence fields."""
-import base64, io, json, tempfile, unittest, zipfile
+import base64, io, json, tempfile, unittest, urllib.error, zipfile
 from pathlib import Path
 from unittest.mock import patch
 import xml.etree.ElementTree as E
@@ -61,4 +61,18 @@ class FeatureTests(unittest.TestCase):
   from pypdf import PdfWriter
   writer=PdfWriter();writer.add_blank_page(width=200,height=200);out=io.BytesIO();writer.write(out)
   result=f.extract(out.getvalue(),'scan.pdf');self.assertTrue(result['warnings']);self.assertEqual(result['sections'],1)
+ def test_openai_429_reasons_are_distinct(self):
+  cases=[('credit_balance_exhausted','credit balance'),('project_spend_limit_exceeded','project API spend limit'),('rate_limit_exceeded','Wait before retrying'),('slow_down','slower request rate')]
+  for code,meaning in cases:
+   with self.subTest(code=code):
+    body=json.dumps({'error':{'code':code,'message':'Do not display raw API text or keys.'}}).encode()
+    err=urllib.error.HTTPError('https://api.openai.com/v1/responses',429,'Too Many Requests',{'Retry-After':'30'},io.BytesIO(body))
+    with patch.object(app,'AI_KEY','mock-only'),patch.object(app.urllib.request,'urlopen',side_effect=err):
+     with self.assertRaises(app.APIRequestError) as raised:
+      app.research({'query':'Example product','mode':'web','consent':True})
+    self.assertEqual(raised.exception.code,code)
+    self.assertEqual(raised.exception.status,429)
+    self.assertEqual(raised.exception.retry_after,'30')
+    self.assertIn(meaning,str(raised.exception))
+    self.assertNotIn('Do not display raw',str(raised.exception))
 if __name__=='__main__':unittest.main()

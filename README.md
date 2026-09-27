@@ -4,7 +4,7 @@ A local Windows workspace for product discovery, business development, source an
 
 ## التثبيت مرة واحدة
 
-1. [تنزيل النسخة 2.0.1](https://raw.githubusercontent.com/engaliasiri2012-lab/bd-workspace-updates/main/releases/BD-Workspace-Setup-2.0.1.zip).
+1. [تنزيل النسخة 2.0.2](https://raw.githubusercontent.com/engaliasiri2012-lab/bd-workspace-updates/main/releases/BD-Workspace-Setup-2.0.2.zip).
 2. أوقف النسخة القديمة بـ Ctrl+C في نافذة التشغيل، ثم فك ضغط الملف الجديد بالكامل.
 3. افتح مجلد BD-Workspace. اضغط Alt+D، اكتب `cmd` ثم Enter.
 4. اكتب `py -3 install.py` ثم Enter.
@@ -53,3 +53,7 @@ python publishing/build_release.py --notes "Release notes"
 Update VERSION first. Commit the source, generated update ZIP, installer ZIP and latest.json together. Packages use immutable version names. The build excludes supplied source files and always includes an empty supplier seed. Future maintainers: read AGENTS.md before publishing.
 
 The app binds only to 127.0.0.1. The optional personal installer creates a Windows shortcut. Actual shortcut behaviour and browser printing must be checked on Windows; Python, package integrity and update flows have been tested in the development environment.
+
+### Error messages
+
+From 2.0.2, OpenAI API 429 errors show the specific reported category in Arabic or English (credits, organization/project spend limit, usage limit, or request rate). The app does not access or change your API billing.

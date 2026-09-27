@@ -36,6 +36,40 @@ AI_KEY = os.environ.get('OPENAI_API_KEY', '')
 AI_MODEL = os.environ.get('OPENAI_MODEL', 'gpt-5-mini')
 AI_LOCK = threading.Lock()
 
+class APIRequestError(ValueError):
+    def __init__(self, message, code='', retry_after='', status=400):
+        super().__init__(message)
+        self.code = code
+        self.retry_after = retry_after
+        self.status = status
+
+def api_http_error(error):
+    """Expose only OpenAI's error category, never the user's query or API key."""
+    try:
+        detail = json.loads(error.read(4096).decode('utf-8'))
+        info = detail.get('error', {})
+        code = info.get('code') or info.get('type') or ''
+    except (ValueError, UnicodeError, AttributeError, TypeError):
+        code = ''
+    code = code if isinstance(code, str) and re.fullmatch(r'[a-z_]{1,80}', code) else ''
+    retry = error.headers.get('Retry-After', '') if error.headers else ''
+    retry = retry if retry.isdigit() and int(retry) <= 3600 else ''
+    if error.code in (401, 403):
+        return APIRequestError('API access was refused. Check your key and model permissions.', code)
+    if error.code == 429:
+        messages = {
+            'credit_balance_exhausted': 'Your OpenAI API credit balance is exhausted. Check API billing.',
+            'organization_spend_limit_exceeded': 'The organization API spend limit was reached. Review its limits.',
+            'project_spend_limit_exceeded': 'The project API spend limit was reached. Review its limits.',
+            'organization_usage_limit_exceeded': 'The organization API usage limit was reached. Review its limits.',
+            'rate_limit_exceeded': 'Too many API requests or tokens in a short time. Wait before retrying.',
+            'rate_limit_error': 'Too many API requests or tokens in a short time. Wait before retrying.',
+            'slow_down': 'OpenAI asked for a slower request rate. Wait before retrying.',
+            'insufficient_quota': 'API quota is unavailable. Check API billing and usage limits.',
+        }
+        return APIRequestError(messages.get(code, 'OpenAI returned 429. Check API billing, usage limits and request rate.'), code, retry, 429)
+    return APIRequestError('The API request failed (HTTP '+str(error.code)+'). Check the model in Settings or try again.', code)
+
 def now():
     return dt.datetime.now(dt.timezone.utc).isoformat(timespec='seconds')
 
@@ -198,9 +232,7 @@ def research(payload):
         try:
             with urllib.request.urlopen(req,timeout=240) as r: result=json.load(r)
         except urllib.error.HTTPError as e:
-            if e.code in (401,403):raise ValueError('API access was refused. Check your key and model permissions.')
-            if e.code==429:raise ValueError('API quota or rate limit reached. Check your OpenAI API billing or try again later.')
-            raise ValueError('The API request failed (HTTP '+str(e.code)+'). Check the model in Settings or try again.')
+            raise api_http_error(e)
         except (urllib.error.URLError,TimeoutError):raise ValueError('The research service could not be reached or timed out. No result was saved.')
         blocks=[]
         for item in result.get('output',[]):
@@ -358,6 +390,7 @@ class Handler(BaseHTTPRequestHandler):
                     return self.send({'added':added,'skipped':skipped})
             self.send({'error':'Not found.'},404)
         except PermissionError as e:self.send({'error':str(e)},403)
+        except APIRequestError as e:self.send({'error':str(e),'error_code':e.code,'retry_after':e.retry_after},e.status)
         except (ValueError,KeyError,TypeError,zipfile.BadZipFile) as e:self.send({'error':str(e)},400)
         except Exception:self.send({'error':'The operation could not be completed. Your saved records have been kept.'},500)
 

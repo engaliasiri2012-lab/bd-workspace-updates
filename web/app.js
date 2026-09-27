@@ -16,7 +16,23 @@ const taskNames=[['supplier','Supplier screening','فحص الموردين'],['p
 const templates={supplier:'Assess products, Saudi presence, existing agent or JV, technical approvals, source dates, evidence gaps, and recommended verification questions.',project:'Identify the project owner, EPC, scope, location, award status, timelines, relevant packages and verified sources. Separate announced dates from estimates.',partner:'Assess fit with customer needs, Saudi channel conflicts, delivery capabilities, localisation potential, evidence gaps and practical next steps.',meeting:'Prepare a concise meeting brief, five useful questions, discussion objectives, evidence needed and proposed actions. Do not invent previous agreements.',report:'Prepare a concise management report: progress, opportunities, risks, overdue actions, decisions required and next steps. Use supplied facts and cite sources.'};
 const nav=[['dashboard','◫','Overview','نظرة عامة'],['suppliers','▦','Supplier intelligence','الموردون'],['opportunities','↗','Opportunities','الفرص'],['accounts','▤','Accounts & contacts','العملاء والاتصالات'],['actions','✓','Actions','المتابعات'],['meetings','▣','Meetings','الاجتماعات'],['sources','⊕','Sources & inputs','المصادر والمدخلات'],['research','⌕','Research workspace','مساحة البحث'],['reports','▥','Reports','التقارير'],['settings','⚙','Settings & backup','الإعدادات والنسخ']];
 function toast(s,error=false){const e=$('#toast');e.textContent=s;e.className='visible'+(error?' error':'');clearTimeout(toast.timer);toast.timer=setTimeout(()=>e.className='',6500)}
-async function api(path,data,blob=false){const options={headers:{'X-BD-Client':'1'}};if(data!==undefined){options.method='POST';options.headers['Content-Type']='application/json';options.headers['X-BD-Token']=state.token;options.body=JSON.stringify(data)}const r=await fetch('/api/'+path,options);if(!r.ok){const e=await r.json().catch(()=>({error:r.statusText}));throw Error(e.error||'Request failed')}return blob?r.blob():r.json()}
+function apiMessage(e){
+ const labels={
+  credit_balance_exhausted:T('Your API credit balance is exhausted. Check API billing.','نفد رصيد حساب OpenAI API. راجع الفوترة ورصيد API.'),
+  organization_spend_limit_exceeded:T('Your organization API spend limit was reached. Review its limits.','وصلت المؤسسة إلى حد الإنفاق على API. راجع حدود المؤسسة.'),
+  project_spend_limit_exceeded:T('Your project API spend limit was reached. Review its limits.','وصل المشروع إلى حد الإنفاق على API. راجع حدود المشروع.'),
+  organization_usage_limit_exceeded:T('Your organization API usage limit was reached. Review its limits.','وصلت المؤسسة إلى حد الاستخدام المعتمد لـ API. راجع حدود المؤسسة.'),
+  insufficient_quota:T('API quota is unavailable. Check API billing and limits.','حصة API غير متاحة. راجع الفوترة وحدود الاستخدام.'),
+  rate_limit_exceeded:T('Too many API requests or tokens. Wait before trying again.','تجاوزت حد الطلبات أو الرموز خلال فترة قصيرة. انتظر ثم أعد المحاولة.'),
+  rate_limit_error:T('Too many API requests or tokens. Wait before trying again.','تجاوزت حد الطلبات أو الرموز خلال فترة قصيرة. انتظر ثم أعد المحاولة.'),
+  slow_down:T('OpenAI asked to slow the request rate. Wait before trying again.','طلبت OpenAI خفض سرعة الطلبات. انتظر ثم أعد المحاولة.')
+ };
+ const message=labels[e.error_code]||e.error||T('Request failed.','تعذر إكمال الطلب.');
+ const seconds=Number(e.retry_after);
+ return message+(seconds>0&&['rate_limit_exceeded','rate_limit_error','slow_down'].includes(e.error_code)?' '+T(`Wait at least ${seconds} seconds.`,`انتظر ${seconds} ثانية على الأقل.`):'');
+}
+async function api(path,data,blob=false){const options={headers:{'X-BD-Client':'1'}};if(data!==undefined){options.method='POST';options.headers['Content-Type']='application/json';options.headers['X-BD-Token']=state.token;options.body=JSON.stringify(data)}const r=await fetch('/api/'+path,options);if(!r.ok){const e=await r.json().catch(()=>({error:r.statusText}));throw Error(apiMessage(e))}return blob?r.blob():r.json()}
+
 async function refresh(){state=await api('state')}
 function download(blob,filename){const u=URL.createObjectURL(blob),a=document.createElement('a');a.href=u;a.download=filename;a.click();setTimeout(()=>URL.revokeObjectURL(u),1000)}
 function options(values,current,empty){return (empty!==undefined?`<option value="">${esc(empty)}</option>`:'')+values.map(v=>{const [id,label]=Array.isArray(v)?v:[v,v];return `<option value="${esc(id)}" ${String(current)===String(id)?'selected':''}>${esc(label)}</option>`}).join('')}
