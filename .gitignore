@@ -1,0 +1,9 @@
+__pycache__/
+*.pyc
+vendor/
+.env
+*.sqlite3*
+attachments/
+update-backups/
+update-settings.json
+seed/*.pptx
